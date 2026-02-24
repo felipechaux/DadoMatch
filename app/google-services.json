@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "1031194304769",
+    "project_id": "dadomatch-fa7df",
+    "storage_bucket": "dadomatch-fa7df.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1031194304769:android:6fe783c5d6f61bfaf93b00",
+        "android_client_info": {
+          "package_name": "com.chauxdevapps.dadomatch"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1031194304769-p910f3mvrc8h6h4ammmssjiaaviken99.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chauxdevapps.dadomatch",
+            "certificate_hash": "65fb5558f103cec28f1f450520dac554b04420b5"
+          }
+        },
+        {
+          "client_id": "1031194304769-ubfma497ppsaonjal029ag0sn59uvjo2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCujW98TA_SN4ZhsMvdoNzMtEyX4RFl6wM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1031194304769-ubfma497ppsaonjal029ag0sn59uvjo2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1031194304769-ne00db6q43hdaqtlca9uus1bnr9oouus.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "chauxdevapps.DadoMatch"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

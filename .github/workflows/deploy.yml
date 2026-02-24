@@ -1,0 +1,83 @@
+name: Deploy to Google Play
+
+on:
+  push:
+    branches:
+      - main        # → Internal Testing track
+    tags:
+      - 'v*.*.*'    # → Promote Internal → Production
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # Build + upload to Internal Testing (runs on every push to main)
+  # ─────────────────────────────────────────────────────────────────
+  deploy-internal:
+    name: Deploy to Internal Testing
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true   # runs `bundle install` and caches gems
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/dadomatch-release.jks
+
+      - name: Decode google-services.json
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON }}" > app/google-services.json
+
+      - name: Decode Play Service Account JSON
+        run: |
+          echo "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}" > app/play-service-account.json
+
+      - name: Write local.properties for signing
+        run: |
+          cat > local.properties <<EOF
+          sdk.dir=$ANDROID_SDK_ROOT
+          KEYSTORE_PATH=${{ github.workspace }}/app/dadomatch-release.jks
+          KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS=${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
+          EOF
+
+      - name: Run Fastlane internal lane
+        run: bundle exec fastlane android internal
+
+  # ─────────────────────────────────────────────────────────────────
+  # Promote Internal → Production (runs on version tag push)
+  # ─────────────────────────────────────────────────────────────────
+  deploy-production:
+    name: Promote to Production
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+
+      - name: Decode Play Service Account JSON
+        run: |
+          echo "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}" > app/play-service-account.json
+
+      - name: Run Fastlane production lane
+        run: bundle exec fastlane android production
