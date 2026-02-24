@@ -13,10 +13,23 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Kotlin / build caches
 .kotlin/
+
+# Keystores & sensitive credentials
 *.jks
 *.keystore
+google-services.json
 play-service-account.json
+
+# Release build outputs
+app/release/
+app/build/
+*.aab
+*.apk
+
+# Fastlane
 Gemfile.lock
 fastlane/report.xml
 fastlane/Preview.html
