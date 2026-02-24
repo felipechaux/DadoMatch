@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "DadoMatch"
 include(":app")
-includeBuild("/Applications/Developer/dado-match-shared")
+includeBuild("../dado-match-shared")

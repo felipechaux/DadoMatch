@@ -20,6 +20,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Clone shared module
+        run: git clone https://github.com/felipechaux/dado-match-shared.git ../dado-match-shared
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -68,6 +71,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Clone shared module
+        run: git clone https://github.com/felipechaux/dado-match-shared.git ../dado-match-shared
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
