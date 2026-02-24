@@ -14,7 +14,13 @@ val localProps = Properties().apply {
 
 android {
     namespace = "com.chauxdevapps.dadomatch"
-    compileSdk = 35
+
+    @Suppress("UNCHECKED_CAST")
+    val buildConfig = rootProject.extra["buildConfig"] as Map<String, Int>
+    @Suppress("UNCHECKED_CAST")
+    val appVersion = rootProject.extra["appVersion"] as Map<String, Any>
+
+    compileSdk = buildConfig["compileSdk"]!!
 
     signingConfigs {
         create("release") {
@@ -27,10 +33,10 @@ android {
 
     defaultConfig {
         applicationId = "com.chauxdevapps.dadomatch"
-        minSdk = 24
-        targetSdk = 35
-        versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
-        versionName = System.getenv("VERSION_NAME") ?: "local"
+        minSdk = buildConfig["minSdk"]!!
+        targetSdk = buildConfig["targetSdk"]!!
+        versionCode = appVersion["versionCode"] as Int
+        versionName = appVersion["versionName"] as String
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
