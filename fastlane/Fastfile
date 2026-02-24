@@ -22,10 +22,11 @@ platform :android do
   desc "Upload to Google Play Internal Testing"
   lane :internal do
     build  # always build fresh before uploading
+    project_root = File.expand_path("..", __dir__)
     upload_to_play_store(
       track: "internal",
-      aab: "app/build/outputs/bundle/release/app-release.aab",
-      json_key: "app/play-service-account.json",
+      aab: File.join(project_root, "app/build/outputs/bundle/release/app-release.aab"),
+      json_key: File.join(project_root, "app/play-service-account.json"),
       skip_upload_apk: true,
       skip_upload_metadata: true,
       skip_upload_changelogs: true,
@@ -39,10 +40,11 @@ platform :android do
   # ──────────────────────────────────────────
   desc "Promote Internal Testing release to Production"
   lane :production do
+    project_root = File.expand_path("..", __dir__)
     upload_to_play_store(
       track: "internal",
       track_promote_to: "production",
-      json_key: "app/play-service-account.json",
+      json_key: File.join(project_root, "app/play-service-account.json"),
       skip_upload_apk: true,
       skip_upload_aab: true,
       skip_upload_metadata: true,

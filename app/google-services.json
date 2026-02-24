@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "1031194304769-v4dflh1fdq774iupggip6lhmru5ri6f5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chauxdevapps.dadomatch",
+            "certificate_hash": "659cd495231d8df6f62307ba17d099e87dbd4832"
+          }
+        },
+        {
           "client_id": "1031194304769-ubfma497ppsaonjal029ag0sn59uvjo2.apps.googleusercontent.com",
           "client_type": 3
         }

@@ -14,3 +14,11 @@
 .cxx
 local.properties
 .kotlin/
+*.jks
+*.keystore
+play-service-account.json
+Gemfile.lock
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
