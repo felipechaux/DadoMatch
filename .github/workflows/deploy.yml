@@ -16,10 +16,10 @@ env:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────
-  # Build + upload to Closed Testing (runs on every push to main)
+  # Build + upload to Internal Testing (runs on every push to main)
   # ─────────────────────────────────────────────────────────────────
-  deploy-closed-testing:
-    name: Deploy to Closed Testing (Alpha)
+  deploy-internal:
+    name: Deploy to Internal Testing
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -72,8 +72,8 @@ jobs:
           KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
           EOF
 
-      - name: Run Fastlane beta lane
-        run: bundle exec fastlane android beta
+      - name: Run Fastlane internal lane
+        run: bundle exec fastlane android internal
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
 
