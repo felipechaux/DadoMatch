@@ -25,7 +25,7 @@ platform :android do
     project_root = File.expand_path("..", __dir__)
     upload_to_play_store(
       track: "internal",
-      package_name: "com.felipechaux.dadomatch",
+      package_name: "com.chauxdevapps.dadomatch",
       aab: File.join(project_root, "app/build/outputs/bundle/release/app-release.aab"),
       json_key: File.join(project_root, "app/play-service-account.json"),
       skip_upload_apk: true,
@@ -45,7 +45,7 @@ platform :android do
     project_root = File.expand_path("..", __dir__)
     upload_to_play_store(
       track: "alpha",
-      package_name: "com.felipechaux.dadomatch",
+      package_name: "com.chauxdevapps.dadomatch",
       aab: File.join(project_root, "app/build/outputs/bundle/release/app-release.aab"),
       json_key: File.join(project_root, "app/play-service-account.json"),
       skip_upload_apk: true,
