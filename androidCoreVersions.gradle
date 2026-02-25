@@ -5,6 +5,6 @@ ext.buildConfig = [
 ]
 
 ext.appVersion = [
-        'versionCode': 5,
+        'versionCode': 6,
         'versionName': "1.0.1"
 ]
