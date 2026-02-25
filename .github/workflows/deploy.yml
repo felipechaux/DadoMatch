@@ -8,6 +8,7 @@ on:
       - 'v*.*.*'    # → Promote Internal → Production
 
 env:
+  APP_FLAVOR: production
   PROD_REVENUECAT_API_KEY: ${{ secrets.PROD_REVENUECAT_API_KEY }}
   STAGE_REVENUECAT_API_KEY: ${{ secrets.STAGE_REVENUECAT_API_KEY }}
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -35,12 +36,6 @@ jobs:
 
       - name: Clone shared module
         run: git clone https://github.com/felipechaux/dado-match-shared.git ../dado-match-shared
-
-      - name: Compile shared module
-        run: ./gradlew :shared:assembleRelease -Papp.flavor=production
-        working-directory: ../dado-match-shared
-        env:
-          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -97,12 +92,6 @@ jobs:
 
       - name: Clone shared module
         run: git clone https://github.com/felipechaux/dado-match-shared.git ../dado-match-shared
-
-      - name: Compile shared module
-        run: ./gradlew :shared:assembleRelease -Papp.flavor=production
-        working-directory: ../dado-match-shared
-        env:
-          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
