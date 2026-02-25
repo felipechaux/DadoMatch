@@ -25,6 +25,27 @@ platform :android do
     project_root = File.expand_path("..", __dir__)
     upload_to_play_store(
       track: "internal",
+      package_name: "com.felipechaux.dadomatch",
+      aab: File.join(project_root, "app/build/outputs/bundle/release/app-release.aab"),
+      json_key: File.join(project_root, "app/play-service-account.json"),
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  # ──────────────────────────────────────────
+  # Upload to Alpha (Closed Testing) track
+  # ──────────────────────────────────────────
+  desc "Upload to Google Play Closed Testing (Alpha)"
+  lane :beta do
+    build  # always build fresh before uploading
+    project_root = File.expand_path("..", __dir__)
+    upload_to_play_store(
+      track: "alpha",
+      package_name: "com.felipechaux.dadomatch",
       aab: File.join(project_root, "app/build/outputs/bundle/release/app-release.aab"),
       json_key: File.join(project_root, "app/play-service-account.json"),
       skip_upload_apk: true,

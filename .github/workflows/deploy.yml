@@ -9,10 +9,10 @@ on:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────
-  # Build + upload to Internal Testing (runs on every push to main)
+  # Build + upload to Closed Testing (runs on every push to main)
   # ─────────────────────────────────────────────────────────────────
-  deploy-internal:
-    name: Deploy to Internal Testing
+  deploy-closed-testing:
+    name: Deploy to Closed Testing (Alpha)
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -20,14 +20,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Clone shared module
-        run: git clone https://github.com/felipechaux/dado-match-shared.git ../dado-match-shared
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: Clone shared module
+        run: git clone https://github.com/felipechaux/dado-match-shared.git ../dado-match-shared
+
+      - name: Compile shared module
+        run: ./gradlew :shared:assembleRelease -Papp.flavor=production
+        working-directory: ../dado-match-shared
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -59,8 +63,8 @@ jobs:
           KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
           EOF
 
-      - name: Run Fastlane internal lane
-        run: bundle exec fastlane android internal
+      - name: Run Fastlane beta lane
+        run: bundle exec fastlane android beta
 
   # ─────────────────────────────────────────────────────────────────
   # Promote Internal → Production (runs on version tag push)
@@ -74,8 +78,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
       - name: Clone shared module
         run: git clone https://github.com/felipechaux/dado-match-shared.git ../dado-match-shared
+
+      - name: Compile shared module
+        run: ./gradlew :shared:assembleRelease -Papp.flavor=production
+        working-directory: ../dado-match-shared
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1

@@ -76,7 +76,8 @@ git push
 |------|---------|-------------|
 | `build` | `fastlane build` | Build signed release AAB |
 | `internal` | `fastlane internal` | Build + upload to Internal Testing |
-| `production` | `fastlane production` | Promote Internal → Production |
+| `beta` | `fastlane beta` | Build + upload to Closed Testing (Alpha) |
+| `production` | `fastlane production` | Promote Internal/Alpha → Production |
 
 ---
 
