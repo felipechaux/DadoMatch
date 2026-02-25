@@ -9,12 +9,12 @@ platform :android do
   desc "Build a signed release AAB"
   lane :build do
     gradle(
-      task: "bundle",
+      task: "clean bundle",
       build_type: "Release",
       project_dir: "./",
       print_command: true,
       properties: {
-        "app.flavor" => ENV["APP_FLAVOR"] || "production"
+        "appFlavor" => ENV["APP_FLAVOR"] || "production"
       }
     )
   end

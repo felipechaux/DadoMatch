@@ -9,6 +9,7 @@ on:
 
 env:
   APP_FLAVOR: production
+  ORG_GRADLE_PROJECT_appFlavor: production
   PROD_REVENUECAT_API_KEY: ${{ secrets.PROD_REVENUECAT_API_KEY }}
   STAGE_REVENUECAT_API_KEY: ${{ secrets.STAGE_REVENUECAT_API_KEY }}
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
