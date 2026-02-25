@@ -32,6 +32,8 @@ jobs:
       - name: Compile shared module
         run: ./gradlew :shared:assembleRelease -Papp.flavor=production
         working-directory: ../dado-match-shared
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -65,9 +67,11 @@ jobs:
 
       - name: Run Fastlane beta lane
         run: bundle exec fastlane android beta
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
 
   # ─────────────────────────────────────────────────────────────────
-  # Promote Internal → Production (runs on version tag push)
+  # Promote Internal/Alpha → Production (runs on version tag push)
   # ─────────────────────────────────────────────────────────────────
   deploy-production:
     name: Promote to Production
@@ -90,6 +94,8 @@ jobs:
       - name: Compile shared module
         run: ./gradlew :shared:assembleRelease -Papp.flavor=production
         working-directory: ../dado-match-shared
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -104,3 +110,5 @@ jobs:
 
       - name: Run Fastlane production lane
         run: bundle exec fastlane android production
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
