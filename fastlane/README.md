@@ -31,6 +31,14 @@ Build a signed release AAB
 
 Upload to Google Play Internal Testing
 
+### android beta
+
+```sh
+[bundle exec] fastlane android beta
+```
+
+Upload to Google Play Closed Testing (Alpha)
+
 ### android production
 
 ```sh
