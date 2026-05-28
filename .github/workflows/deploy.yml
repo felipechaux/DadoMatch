@@ -28,6 +28,11 @@ env:
   STAGE_REVENUECAT_API_KEY: ${{ secrets.STAGE_REVENUECAT_API_KEY }}
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   GEMINI_MODEL_NAME: ${{ vars.GEMINI_MODEL_NAME }}
+  # NVIDIA NIM (primary AI provider; falls back to Gemini if NVIDIA_API_KEY is empty).
+  # Model/base URL fall back to the BuildKonfig defaults if the vars are unset.
+  NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+  NVIDIA_MODEL_NAME: ${{ vars.NVIDIA_MODEL_NAME || 'meta/llama-3.3-70b-instruct' }}
+  NVIDIA_BASE_URL: ${{ vars.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1' }}
   GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
 
 jobs:
