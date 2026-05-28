@@ -1,11 +1,25 @@
 name: Deploy to Google Play
 
+# Trigger model:
+#   - Pushing a vX.Y.Z tag      → deploy-internal (build + upload AAB to Internal Testing)
+#   - Manual dispatch (UI)      → choose internal (re-upload) or production (promote latest internal → prod)
+#
+# Merging to main does NOT auto-deploy anymore. To ship, bump the version, merge,
+# and push a tag — that's the single source of truth for what gets uploaded.
 on:
   push:
-    branches:
-      - main        # → Internal Testing track
     tags:
-      - 'v*.*.*'    # → Promote Internal → Production
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: 'Lane to run (only used for manual dispatch)'
+        required: true
+        type: choice
+        options:
+          - internal
+          - production
+        default: production
 
 env:
   APP_FLAVOR: production
@@ -18,12 +32,16 @@ env:
 
 jobs:
   # ─────────────────────────────────────────────────────────────────
-  # Build + upload to Internal Testing (runs on every push to main)
+  # Build + upload to Internal Testing
+  #   - automatic on tag push (v*.*.*)
+  #   - or manual via workflow_dispatch (lane: internal)
   # ─────────────────────────────────────────────────────────────────
   deploy-internal:
     name: Deploy to Internal Testing
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.lane == 'internal')
 
     steps:
       - name: Checkout code
@@ -74,25 +92,18 @@ jobs:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
 
   # ─────────────────────────────────────────────────────────────────
-  # Promote Internal/Alpha → Production (runs on version tag push)
+  # Promote Internal → Production (manual gate)
+  #   - only via workflow_dispatch (lane: production)
+  #   - takes the latest build already in Internal Testing
   # ─────────────────────────────────────────────────────────────────
   deploy-production:
     name: Promote to Production
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'workflow_dispatch' && inputs.lane == 'production'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Clone shared module
-        run: git clone https://github.com/felipechaux/dado-match-shared.git ../dado-match-shared
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -107,5 +118,3 @@ jobs:
 
       - name: Run Fastlane production lane
         run: bundle exec fastlane android production
-        env:
-          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
