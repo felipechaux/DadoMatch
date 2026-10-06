@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "release_notes"
+
 default_platform(:android)
 
 PROJECT_ROOT = File.expand_path("..", __dir__)
@@ -7,6 +9,7 @@ VERSIONS_FILE = File.join(PROJECT_ROOT, "androidCoreVersions.gradle")
 PLAY_JSON_KEY = File.join(PROJECT_ROOT, "app/play-service-account.json")
 # CI clones the shared KMP module next to this repo; locally it is the sibling checkout
 SHARED_DIR = File.expand_path("../dado-match-shared", PROJECT_ROOT)
+PLAY_METADATA = File.join(__dir__, "metadata", "android")
 
 platform :android do
   # ──────────────────────────────────────────
@@ -29,17 +32,20 @@ platform :android do
   # Upload to Internal Testing track
   # ──────────────────────────────────────────
   desc "Upload to Google Play Internal Testing"
-  lane :internal do
+  lane :internal do |options|
     build  # always build fresh before uploading
     project_root = File.expand_path("..", __dir__)
+    # release passes with_changelog: the "What's new" files written for this versionCode
+    with_changelog = options[:with_changelog] == true
     upload_to_play_store(
       track: "internal",
       package_name: "com.chauxdevapps.dadomatch",
       aab: File.join(project_root, "app/build/outputs/bundle/release/app-release.aab"),
       json_key: File.join(project_root, "app/play-service-account.json"),
+      metadata_path: PLAY_METADATA,
       skip_upload_apk: true,
       skip_upload_metadata: true,
-      skip_upload_changelogs: true,
+      skip_upload_changelogs: !with_changelog,
       skip_upload_images: true,
       skip_upload_screenshots: true,
     )
@@ -71,6 +77,15 @@ platform :android do
   desc "Promote Internal Testing release to Production"
   lane :production do
     project_root = File.expand_path("..", __dir__)
+    # Promotion copies the Internal release with the notes uploaded by `release`;
+    # show them once more before they reach every user
+    tag = "v#{read_app_version('versionName')}"
+    if File.exist?(ReleaseNotes.path_for(tag))
+      ReleaseNotes.review!(tag, purpose: "promote to Production (already attached to the Internal release)")
+    else
+      UI.important("No release notes saved for #{tag}; Production will use whatever the Internal release has")
+      UI.user_error!("Promotion cancelled") unless UI.confirm("Promote anyway?")
+    end
     upload_to_play_store(
       track: "internal",
       track_promote_to: "production",
@@ -115,17 +130,55 @@ platform :android do
     write_app_version("versionName", "\"#{version}\"", "\"#{new_version}\"")
     write_app_version("versionCode", code, new_code)
 
-    internal
+    # Store "What's new", written from the commits since the previous release
+    commits = ReleaseNotes.collect_commits(
+      app_repo: PROJECT_ROOT,
+      shared_repo: SHARED_DIR,
+      previous_tag: ReleaseNotes.previous_tag(PROJECT_ROOT)
+    )
+    ReleaseNotes.save(tag, ReleaseNotes.generate(platform: "android", commits: commits))
+    notes = ReleaseNotes.review!(tag, purpose: "upload to Internal Testing")
+    changelog_files = write_play_changelogs(notes, new_code)
 
-    git_commit(path: [VERSIONS_FILE], message: "chore(release): #{tag} (versionCode #{new_code})")
-    add_git_tag(tag: tag, message: "Release #{tag} (versionCode #{new_code})")
+    internal(with_changelog: true)
+
+    shared_sha = sh("git -C '#{SHARED_DIR}' rev-parse HEAD", log: false).strip
+    git_add(path: [ReleaseNotes.path_for(tag)] + changelog_files)
+    git_commit(
+      path: [VERSIONS_FILE, ReleaseNotes.path_for(tag)] + changelog_files,
+      message: "chore(release): #{tag} (versionCode #{new_code})"
+    )
+    # The Shared trailer lets the next release list only the shared commits after this one
+    add_git_tag(tag: tag, message: "Release #{tag} (versionCode #{new_code})\n\n#{ReleaseNotes.tag_trailer_line(shared_sha)}")
     push_to_git_remote(remote_branch: "main", tags: true)
+    if system("which gh > /dev/null")
+      sh("gh", "release", "create", tag, "--title", "Release #{tag}", "--notes", notes.fetch("en-US"))
+    end
     UI.success("#{tag} (#{new_code}) uploaded to Internal Testing. Promote it with: make promote")
   end
 
+  # ──────────────────────────────────────────
+  # Preview the store notes the next release would get (nothing is uploaded)
+  # ──────────────────────────────────────────
+  desc "Preview the release notes for the next release"
+  lane :notes do
+    commits = ReleaseNotes.collect_commits(
+      app_repo: PROJECT_ROOT,
+      shared_repo: SHARED_DIR,
+      previous_tag: ReleaseNotes.previous_tag(PROJECT_ROOT)
+    )
+    UI.message("#{commits.size} user-facing commits since #{ReleaseNotes.previous_tag(PROJECT_ROOT) || 'the beginning'}")
+    ReleaseNotes.generate(platform: "android", commits: commits).each do |lang, text|
+      UI.message("[#{lang}] (#{text.length}/#{ReleaseNotes::MAX_CHARS})\n#{text}\n")
+    end
+    UI.message("Play listing languages: #{play_listing_languages.join(', ')}")
+  end
+
   error do |lane, _exception|
+    next unless lane == :release
     # A failed release must not leave a half-applied version bump behind
-    reset_git_repo(force: true, files: [VERSIONS_FILE]) if lane == :release
+    reset_git_repo(force: true, files: [VERSIONS_FILE])
+    sh("git -C '#{PROJECT_ROOT}' clean -fdq -- fastlane/release_notes fastlane/metadata", log: false)
   end
 
   # ──────────────────────────────────────────
@@ -176,4 +229,31 @@ def ensure_shared_ready
   dirty = sh("git -C '#{SHARED_DIR}' status --porcelain", log: false).strip
   UI.user_error!("dado-match-shared has uncommitted changes:\n#{dirty}") unless dirty.empty?
   sh("git -C '#{SHARED_DIR}' pull --ff-only", log: false)
+end
+
+# Google Play only accepts notes for languages in the store listing, so write
+# the changelog file only for those; the rest stay in the release notes JSON
+def write_play_changelogs(notes, version_code)
+  listed = play_listing_languages
+  skipped = notes.keys - listed
+  UI.important("Not in the Play listing, kept only in the JSON: #{skipped.join(', ')}") unless skipped.empty?
+  (notes.keys & listed).map do |lang|
+    path = File.join(PLAY_METADATA, lang, "changelogs", "#{version_code}.txt")
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, notes[lang] + "\n")
+    path
+  end.tap { |files| UI.user_error!("No release notes language matches the Play listing (#{listed.join(', ')})") if files.empty? }
+end
+
+def play_listing_languages
+  require "supply"
+  Supply.config = FastlaneCore::Configuration.create(
+    Supply::Options.available_options,
+    { package_name: "com.chauxdevapps.dadomatch", json_key: PLAY_JSON_KEY }
+  )
+  client = Supply::Client.make_from_config
+  client.begin_edit(package_name: "com.chauxdevapps.dadomatch")
+  client.listings.map(&:language)
+ensure
+  client&.abort_current_edit
 end

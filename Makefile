@@ -1,4 +1,4 @@
-.PHONY: release promote release-ci promote-ci status help
+.PHONY: release promote notes release-ci promote-ci status help
 
 BUMP ?= patch
 
@@ -6,6 +6,10 @@ BUMP ?= patch
 release:
 	@case "$(BUMP)" in patch|minor|major) ;; *) echo "BUMP must be patch, minor or major"; exit 1 ;; esac
 	bundle exec fastlane android release bump:$(BUMP)
+
+## Preview the store release notes the next release would get (uploads nothing)
+notes:
+	bundle exec fastlane android notes
 
 ## Local: promote the latest Internal Testing build to Production
 promote:
@@ -30,6 +34,7 @@ help:
 	@echo ""
 	@echo "  make release [BUMP=patch|minor|major]     Bump, upload to Internal Testing and tag (local)"
 	@echo "  make promote                              Promote latest Internal build to Production (local)"
+	@echo "  make notes                                Preview the next release notes"
 	@echo "  make release-ci / promote-ci [BUMP=...]   Same, on GitHub Actions"
 	@echo "  make status                               Latest GitHub Actions runs"
 	@echo ""
