@@ -9,7 +9,9 @@ VERSIONS_FILE = File.join(PROJECT_ROOT, "androidCoreVersions.gradle")
 PLAY_JSON_KEY = File.join(PROJECT_ROOT, "app/play-service-account.json")
 # CI clones the shared KMP module next to this repo; locally it is the sibling checkout
 SHARED_DIR = File.expand_path("../dado-match-shared", PROJECT_ROOT)
-PLAY_METADATA = File.join(__dir__, "metadata", "android")
+# Absolute: __dir__ is relative in a Fastfile and fastlane changes the working
+# directory between steps
+PLAY_METADATA = File.join(PROJECT_ROOT, "fastlane", "metadata", "android")
 
 platform :android do
   # ──────────────────────────────────────────
@@ -180,7 +182,8 @@ platform :android do
   end
 
   error do |lane, _exception|
-    next unless lane == :release
+    # release calls internal, and a failure there is reported with lane :internal
+    next unless %i[release internal].include?(lane)
     # A failed release must not leave a half-applied version bump behind
     reset_git_repo(force: true, files: [VERSIONS_FILE])
     ReleaseNotes.restore_drafts!(PROJECT_ROOT)
