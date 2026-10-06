@@ -1,15 +1,26 @@
 name: Deploy to Google Play
 
 # Trigger model:
-#   - Pushing a vX.Y.Z tag      → deploy-internal (build + upload AAB to Internal Testing)
-#   - Manual dispatch (UI)      → choose internal (re-upload) or production (promote latest internal → prod)
+#   - Release workflow (release.yml) → bumps the version, tags it and calls this
+#                                      workflow with lane=internal on that tag
+#   - Pushing a vX.Y.Z tag by hand   → deploy-internal (build + upload AAB to Internal Testing)
+#   - Manual dispatch (UI)           → choose internal (re-upload) or production (promote latest internal → prod)
 #
-# Merging to main does NOT auto-deploy anymore. To ship, bump the version, merge,
-# and push a tag — that's the single source of truth for what gets uploaded.
+# Merging to main does NOT auto-deploy. To ship, run the Release workflow
+# (`make release BUMP=patch`), then promote with `make promote`.
 on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_call:
+    inputs:
+      lane:
+        type: string
+        required: true
+      ref:
+        description: 'Git ref (tag) to build'
+        type: string
+        required: true
   workflow_dispatch:
     inputs:
       lane:
@@ -46,11 +57,14 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
-      (github.event_name == 'workflow_dispatch' && inputs.lane == 'internal')
+      (github.event_name != 'push' && inputs.lane == 'internal')
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Release workflow passes the tag it just created; otherwise the triggering ref
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -104,7 +118,7 @@ jobs:
   deploy-production:
     name: Promote to Production
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.lane == 'production'
+    if: github.event_name != 'push' && inputs.lane == 'production'
 
     steps:
       - name: Checkout code
