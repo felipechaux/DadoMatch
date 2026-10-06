@@ -5,10 +5,10 @@ name: Release
 #   2. Commits the bump to main, tags it vX.Y.Z and creates the GitHub Release
 #   3. Builds and uploads that tag to Google Play Internal Testing (deploy.yml)
 #
-# Then promote Internal → Production with `make promote` (deploy.yml, lane=production).
+# Then promote Internal → Production with `make promote-ci` (deploy.yml, lane=production).
 #
-# The tag is pushed with GITHUB_TOKEN, which does not trigger other workflows,
-# so deploy.yml's own tag trigger does not fire a second upload.
+# Same flow as the local `make release` (fastlane android release); use this one
+# via `make release-ci` when you want it to run on GitHub Actions instead.
 on:
   workflow_dispatch:
     inputs:

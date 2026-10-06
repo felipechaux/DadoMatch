@@ -2,6 +2,12 @@
 
 default_platform(:android)
 
+PROJECT_ROOT = File.expand_path("..", __dir__)
+VERSIONS_FILE = File.join(PROJECT_ROOT, "androidCoreVersions.gradle")
+PLAY_JSON_KEY = File.join(PROJECT_ROOT, "app/play-service-account.json")
+# CI clones the shared KMP module next to this repo; locally it is the sibling checkout
+SHARED_DIR = File.expand_path("../dado-match-shared", PROJECT_ROOT)
+
 platform :android do
   # ──────────────────────────────────────────
   # Build a signed release AAB
@@ -79,6 +85,50 @@ platform :android do
   end
 
   # ──────────────────────────────────────────
+  # Bump version, upload to Internal Testing, then commit + tag
+  #   fastlane android release bump:patch|minor|major
+  # ──────────────────────────────────────────
+  desc "Bump versionName (bump:patch|minor|major) + versionCode, upload to Internal Testing and tag vX.Y.Z"
+  lane :release do |options|
+    bump = (options[:bump] || "patch").to_s
+    UI.user_error!("bump must be patch, minor or major") unless %w[patch minor major].include?(bump)
+
+    ensure_git_branch(branch: "main")
+    ensure_git_status_clean
+    git_pull
+    ensure_shared_ready
+
+    version = read_app_version("versionName")
+    code = read_app_version("versionCode").to_i
+    new_version = next_version(version, bump)
+    # Never reuse a versionCode Google Play already has on any track
+    play_codes = %w[internal alpha beta production].flat_map do |track|
+      google_play_track_version_codes(track: track, json_key: PLAY_JSON_KEY)
+    rescue StandardError
+      [] # track never used
+    end
+    new_code = ([code] + play_codes).max + 1
+    tag = "v#{new_version}"
+    UI.user_error!("Tag #{tag} already exists") if git_tag_exists(tag: tag)
+    UI.important("Releasing #{version} (#{code}) → #{new_version} (#{new_code})")
+
+    write_app_version("versionName", "\"#{version}\"", "\"#{new_version}\"")
+    write_app_version("versionCode", code, new_code)
+
+    internal
+
+    git_commit(path: [VERSIONS_FILE], message: "chore(release): #{tag} (versionCode #{new_code})")
+    add_git_tag(tag: tag, message: "Release #{tag} (versionCode #{new_code})")
+    push_to_git_remote(remote_branch: "main", tags: true)
+    UI.success("#{tag} (#{new_code}) uploaded to Internal Testing. Promote it with: make promote")
+  end
+
+  error do |lane, _exception|
+    # A failed release must not leave a half-applied version bump behind
+    reset_git_repo(force: true, files: [VERSIONS_FILE]) if lane == :release
+  end
+
+  # ──────────────────────────────────────────
   # CI helper: load local.properties into ENV
   # ──────────────────────────────────────────
   before_all do
@@ -93,4 +143,37 @@ platform :android do
       end
     end
   end
+end
+
+def read_app_version(key)
+  value = File.read(VERSIONS_FILE)[/'#{key}':\s*"?([0-9.]+)"?/, 1]
+  UI.user_error!("Could not read #{key} from #{VERSIONS_FILE}") unless value
+  value
+end
+
+def write_app_version(key, from, to)
+  versions = File.read(VERSIONS_FILE)
+  File.write(VERSIONS_FILE, versions.sub("'#{key}': #{from}", "'#{key}': #{to}"))
+end
+
+def next_version(version, bump)
+  parts = version.split(".").map(&:to_i)
+  UI.user_error!("versionName #{version} is not X.Y.Z") unless parts.size == 3
+  major, minor, patch = parts
+  case bump
+  when "major" then "#{major + 1}.0.0"
+  when "minor" then "#{major}.#{minor + 1}.0"
+  else "#{major}.#{minor}.#{patch + 1}"
+  end
+end
+
+# The AAB embeds whatever the shared repo has checked out (includeBuild), so it
+# must be the released code: main, clean and up to date
+def ensure_shared_ready
+  UI.user_error!("Shared repo not found at #{SHARED_DIR}") unless Dir.exist?(SHARED_DIR)
+  branch = sh("git -C '#{SHARED_DIR}' rev-parse --abbrev-ref HEAD", log: false).strip
+  UI.user_error!("dado-match-shared must be on main (is on #{branch})") unless branch == "main"
+  dirty = sh("git -C '#{SHARED_DIR}' status --porcelain", log: false).strip
+  UI.user_error!("dado-match-shared has uncommitted changes:\n#{dirty}") unless dirty.empty?
+  sh("git -C '#{SHARED_DIR}' pull --ff-only", log: false)
 end
