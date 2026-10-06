@@ -1,0 +1,105 @@
+name: Release
+
+# One-click release:
+#   1. Bumps versionName (major/minor/patch) and versionCode in androidCoreVersions.gradle
+#   2. Commits the bump to main, tags it vX.Y.Z and creates the GitHub Release
+#   3. Builds and uploads that tag to Google Play Internal Testing (deploy.yml)
+#
+# Then promote Internal → Production with `make promote-ci` (deploy.yml, lane=production).
+#
+# Same flow as the local `make release` (fastlane android release); use this one
+# via `make release-ci` when you want it to run on GitHub Actions instead.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version part to bump'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Bump version & tag
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Compute next version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          file=androidCoreVersions.gradle
+          name=$(grep -oE "'versionName': \"[0-9]+\.[0-9]+\.[0-9]+\"" "$file" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          code=$(grep -oE "'versionCode': [0-9]+" "$file" | grep -oE '[0-9]+$')
+          if [ -z "$name" ] || [ -z "$code" ]; then
+            echo "::error::Could not read versionName/versionCode from $file"; exit 1
+          fi
+
+          IFS=. read -r major minor patch <<< "$name"
+          case "$BUMP" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          new_name="$major.$minor.$patch"
+          new_code=$((code + 1))
+          tag="v$new_name"
+
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::Tag $tag already exists"; exit 1
+          fi
+
+          sed -i "s/'versionCode': $code/'versionCode': $new_code/; s/'versionName': \"$name\"/'versionName': \"$new_name\"/" "$file"
+          git diff --exit-code --quiet "$file" && { echo "::error::Version bump did not change $file"; exit 1; }
+
+          echo "Bumping $name ($code) → $new_name ($new_code)"
+          echo "name=$new_name" >> "$GITHUB_OUTPUT"
+          echo "code=$new_code" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, tag and push
+        env:
+          NAME: ${{ steps.version.outputs.name }}
+          CODE: ${{ steps.version.outputs.code }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(release): $TAG (versionCode $CODE)"
+          git tag -a "$TAG" -m "Release $TAG (versionCode $CODE)"
+          git push origin main "$TAG"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: gh release create "$TAG" --title "Release $TAG" --generate-notes
+
+  deploy:
+    name: Upload to Internal Testing
+    needs: bump
+    uses: ./.github/workflows/deploy.yml
+    with:
+      lane: internal
+      ref: ${{ needs.bump.outputs.tag }}
+    secrets: inherit
