@@ -183,7 +183,8 @@ platform :android do
     next unless lane == :release
     # A failed release must not leave a half-applied version bump behind
     reset_git_repo(force: true, files: [VERSIONS_FILE])
-    sh("git -C '#{PROJECT_ROOT}' clean -fdq -- fastlane/release_notes fastlane/metadata", log: false)
+    ReleaseNotes.restore_drafts!(PROJECT_ROOT)
+    sh("git -C '#{PROJECT_ROOT}' clean -fdq -- fastlane/metadata", log: false)
   end
 
   # ──────────────────────────────────────────

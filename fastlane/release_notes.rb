@@ -15,6 +15,8 @@ require "open3"
 require "fileutils"
 
 module ReleaseNotes
+  # Fastfiles get UI from fastlane's runner; a plain module has to name it
+  UI = FastlaneCore::UI
   # Languages generated, as Google Play codes; App Store mapping lives in the iOS Fastfile
   LANGUAGES = %w[en-US es-419].freeze
   MAX_CHARS = 500 # Google Play hard limit (App Store allows 4000); the prompt aims for ~200
@@ -43,6 +45,16 @@ module ReleaseNotes
       FileUtils.mv(draft, path_for(tag))
     else
       save(tag, generate(platform: platform, commits: yield))
+    end
+  end
+
+  # After a failed release: turn the notes it took from a draft (or generated)
+  # back into drafts, so the reviewed text survives the cleanup
+  def restore_drafts!(repo)
+    untracked = git(repo, "ls-files", "--others", "--exclude-standard", "--", NOTES_DIR).lines.map(&:strip)
+    untracked.grep(/\.json\z/).reject { |f| f.end_with?(".draft.json") }.each do |file|
+      path = File.join(repo, file)
+      FileUtils.mv(path, draft_path_for(File.basename(file, ".json")))
     end
   end
 
