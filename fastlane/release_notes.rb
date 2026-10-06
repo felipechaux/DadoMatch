@@ -28,6 +28,24 @@ module ReleaseNotes
     File.join(NOTES_DIR, "#{tag}.json")
   end
 
+  # Draft written by the `notes` lane (git-ignored) so the exact text reviewed
+  # ahead of time is the one the release uploads
+  def draft_path_for(tag)
+    File.join(NOTES_DIR, "#{tag}.draft.json")
+  end
+
+  # Uses the draft for this tag if there is one, otherwise generates the notes;
+  # the block returns the commits and only runs when generating
+  def prepare(tag, platform:)
+    draft = draft_path_for(tag)
+    if File.exist?(draft)
+      UI.message("Using reviewed draft #{draft}")
+      FileUtils.mv(draft, path_for(tag))
+    else
+      save(tag, generate(platform: platform, commits: yield))
+    end
+  end
+
   def load(tag)
     path = path_for(tag)
     UI.user_error!("No release notes for #{tag} at #{path}") unless File.exist?(path)
@@ -100,7 +118,9 @@ module ReleaseNotes
     fallback
   end
 
-  # Shows the notes and waits for approval; the file can be edited meanwhile
+  # Shows the notes and waits for approval; the file can be edited meanwhile.
+  # RELEASE_NOTES_APPROVED=1 skips the prompt (non-interactive runs, notes
+  # approved beforehand from a draft); length limits still apply.
   def review!(tag, purpose:)
     path = path_for(tag)
     loop do
@@ -109,6 +129,12 @@ module ReleaseNotes
       UI.header("Release notes #{tag} — #{purpose}")
       notes.each { |lang, text| UI.message("[#{lang}] (#{text.length}/#{MAX_CHARS})\n#{text}\n") }
       UI.important("Over #{MAX_CHARS} characters: #{too_long.join(', ')}") unless too_long.empty?
+
+      if ENV["RELEASE_NOTES_APPROVED"] == "1"
+        UI.user_error!("Shorten #{too_long.join(', ')} in #{path}") unless too_long.empty?
+        UI.message("Approved via RELEASE_NOTES_APPROVED")
+        return notes
+      end
 
       case UI.select("Edit #{path} if needed, then:", ["Use these notes", "Reload after editing", "Abort"])
       when "Use these notes"

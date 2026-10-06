@@ -131,12 +131,13 @@ platform :android do
     write_app_version("versionCode", code, new_code)
 
     # Store "What's new", written from the commits since the previous release
-    commits = ReleaseNotes.collect_commits(
-      app_repo: PROJECT_ROOT,
-      shared_repo: SHARED_DIR,
-      previous_tag: ReleaseNotes.previous_tag(PROJECT_ROOT)
-    )
-    ReleaseNotes.save(tag, ReleaseNotes.generate(platform: "android", commits: commits))
+    ReleaseNotes.prepare(tag, platform: "android") do
+      ReleaseNotes.collect_commits(
+        app_repo: PROJECT_ROOT,
+        shared_repo: SHARED_DIR,
+        previous_tag: ReleaseNotes.previous_tag(PROJECT_ROOT)
+      )
+    end
     notes = ReleaseNotes.review!(tag, purpose: "upload to Internal Testing")
     changelog_files = write_play_changelogs(notes, new_code)
 
@@ -160,18 +161,22 @@ platform :android do
   # ──────────────────────────────────────────
   # Preview the store notes the next release would get (nothing is uploaded)
   # ──────────────────────────────────────────
-  desc "Preview the release notes for the next release"
-  lane :notes do
-    commits = ReleaseNotes.collect_commits(
-      app_repo: PROJECT_ROOT,
-      shared_repo: SHARED_DIR,
-      previous_tag: ReleaseNotes.previous_tag(PROJECT_ROOT)
-    )
-    UI.message("#{commits.size} user-facing commits since #{ReleaseNotes.previous_tag(PROJECT_ROOT) || 'the beginning'}")
-    ReleaseNotes.generate(platform: "android", commits: commits).each do |lang, text|
-      UI.message("[#{lang}] (#{text.length}/#{ReleaseNotes::MAX_CHARS})\n#{text}\n")
-    end
+  desc "Preview the release notes for the next release (bump: saves them as the draft that release uploads)"
+  lane :notes do |options|
+    previous = ReleaseNotes.previous_tag(PROJECT_ROOT)
+    commits = ReleaseNotes.collect_commits(app_repo: PROJECT_ROOT, shared_repo: SHARED_DIR, previous_tag: previous)
+    UI.message("#{commits.size} user-facing commits since #{previous || 'the beginning'}")
+    notes = ReleaseNotes.generate(platform: "android", commits: commits)
+    notes.each { |lang, text| UI.message("[#{lang}] (#{text.length}/#{ReleaseNotes::MAX_CHARS})\n#{text}\n") }
     UI.message("Play listing languages: #{play_listing_languages.join(', ')}")
+
+    if (bump = options[:bump])
+      tag = "v#{next_version(read_app_version('versionName'), bump.to_s)}"
+      draft = ReleaseNotes.draft_path_for(tag)
+      FileUtils.mkdir_p(File.dirname(draft))
+      File.write(draft, JSON.pretty_generate(notes) + "\n")
+      UI.success("Draft for #{tag} saved to #{draft} — edit it if needed; `make release BUMP=#{bump}` will use it")
+    end
   end
 
   error do |lane, _exception|
