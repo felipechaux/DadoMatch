@@ -61,7 +61,7 @@ Bump versionName (bump:patch|minor|major) + versionCode, upload to Internal Test
 [bundle exec] fastlane android notes
 ```
 
-Preview the release notes for the next release
+Preview the release notes for the next release (bump: saves them as the draft that release uploads)
 
 ----
 
