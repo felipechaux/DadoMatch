@@ -47,6 +47,22 @@ Upload to Google Play Closed Testing (Alpha)
 
 Promote Internal Testing release to Production
 
+### android release
+
+```sh
+[bundle exec] fastlane android release
+```
+
+Bump versionName (bump:patch|minor|major) + versionCode, upload to Internal Testing and tag vX.Y.Z
+
+### android notes
+
+```sh
+[bundle exec] fastlane android notes
+```
+
+Preview the release notes for the next release
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
