@@ -17,7 +17,7 @@ require "fileutils"
 module ReleaseNotes
   # Languages generated, as Google Play codes; App Store mapping lives in the iOS Fastfile
   LANGUAGES = %w[en-US es-419].freeze
-  MAX_CHARS = 500 # Google Play limit (App Store allows 4000)
+  MAX_CHARS = 500 # Google Play hard limit (App Store allows 4000); the prompt aims for ~200
   NOTES_DIR = File.expand_path("release_notes", __dir__)
   SHARED_TRAILER = "Shared"
   TRAILER = /\A(Co-Authored-By|Signed-off-by|#{SHARED_TRAILER}): /i
@@ -65,17 +65,24 @@ module ReleaseNotes
     return fallback if commits.empty?
 
     prompt = <<~PROMPT
-      You write app store release notes. Below are the git commits that went into a new
-      version of DadoMatch (an AI icebreaker / dating-opener app) for #{platform.upcase}.
-      Write the "What's new" text for end users:
-      - Only user-visible changes on #{platform}. Ignore changes specific to other platforms,
-        CI, build, release tooling, refactors and internal fixes users can't notice.
-      - 3 to 5 bullets, each starting with "• ", short and friendly, no jargon, no commit
-        prefixes, no PR numbers.
-      - If there is nothing user-visible, use a single "• Bug fixes and performance improvements".
-      - At most #{MAX_CHARS - 50} characters per language.
+      You write the "What's new" text shown in the app store for DadoMatch, an app that
+      suggests icebreakers / openers for dating. The readers are everyday users, not
+      developers. Below are the git commits of the new #{platform} version.
+
+      Rules:
+      - At most 3 bullets, each starting with "• " and under 60 characters.
+      - Lead with what the user gets ("Sign in with Google without hiccups"), never how it
+        was done. No technical words: no OS or version numbers, component or library names,
+        "layout", "navigation stack", "API", "crash", "context", etc.
+      - Only changes a user of the #{platform} app can notice. Ignore other platforms, CI,
+        build, release tooling, refactors and invisible fixes.
+      - Put the most exciting change first. Fold minor fixes into one last bullet:
+        "• Bug fixes and improvements".
+      - If nothing is user-visible, use only "• Bug fixes and improvements".
+      - Warm, simple, no exclamation overload, no emojis, no PR numbers.
+
       Return ONLY a JSON object, no code fences: {"en-US": "...", "es-419": "..."}
-      where es-419 is natural Latin American Spanish.
+      where es-419 is natural, casual Latin American Spanish (use "tú").
     PROMPT
 
     # Use the developer's claude.ai login: an exported API key would take precedence
@@ -120,8 +127,8 @@ module ReleaseNotes
 
   def fallback
     {
-      "en-US" => "• Bug fixes and performance improvements",
-      "es-419" => "• Corrección de errores y mejoras de rendimiento"
+      "en-US" => "• Bug fixes and improvements",
+      "es-419" => "• Corrección de errores y mejoras"
     }
   end
 
