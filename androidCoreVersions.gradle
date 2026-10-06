@@ -1,7 +1,7 @@
 ext.buildConfig = [
         'compileSdk': 36,
         'minSdk': 24,
-        'targetSdk': 35
+        'targetSdk': 36
 ]
 
 ext.appVersion = [
